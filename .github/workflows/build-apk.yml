@@ -18,10 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract fixed project
+      - name: Extract project
         run: |
           unzip -q ShortsArchiverAndroidV3_GitHubReady_FIXED.zip
-          cd ShortsArchiverAndroidV3_GitHubReady_FIXED
+          cd ShortsArchiverAndroidV3_GitHubReady
           echo "PROJECT_DIR=$PWD" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
