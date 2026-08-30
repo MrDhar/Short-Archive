@@ -35,6 +35,12 @@ jobs:
         with:
           gradle-version: "8.13"
 
+      - name: Configure AndroidX
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
       - name: Build APK
         working-directory: ${{ env.PROJECT_DIR }}
         run: gradle :app:assembleDebug --stacktrace
