@@ -25,7 +25,7 @@ jobs:
           echo "PROJECT_DIR=$PWD" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -35,11 +35,12 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Configure AndroidX
+      - name: Configure AndroidX and JVM
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
+          echo "kotlin.jvm.target.validation.mode=warning" >> gradle.properties
 
       - name: Build APK
         working-directory: ${{ env.PROJECT_DIR }}
