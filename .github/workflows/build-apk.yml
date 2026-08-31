@@ -19,7 +19,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Find and extract Android project
+        shell: bash
         run: |
+          set -e
+
           ZIP=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
 
           if [ -z "$ZIP" ]; then
@@ -28,17 +31,39 @@ jobs:
           fi
 
           echo "Using ZIP: $ZIP"
-          unzip -q "$ZIP"
 
-          PROJECT_DIR=$(find . -maxdepth 3 -type f -name "settings.gradle*" -printf '%h\n' | head -n 1)
+          # Extract outside the repository checkout so existing
+          # repository files cannot cause overwrite prompts.
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -q -o "$ZIP" -d extracted
+
+          echo "Extracted project files:"
+          find extracted -maxdepth 4 -type f | head -n 100
+
+          # Find the Android Gradle project.
+          PROJECT_DIR=$(find extracted \
+            -maxdepth 5 \
+            -type f \
+            -name "settings.gradle*" \
+            -printf '%h\n' \
+            | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: Android Gradle project not found."
-            find . -maxdepth 3 -type f
+
+            echo "Directory structure:"
+            find extracted -maxdepth 6 -type f
+
             exit 1
           fi
 
           PROJECT_DIR=$(realpath "$PROJECT_DIR")
+
+          echo "Android project found at:"
+          echo "$PROJECT_DIR"
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
@@ -54,16 +79,62 @@ jobs:
 
       - name: Configure AndroidX and JVM
         working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
         run: |
           touch gradle.properties
-          echo "android.useAndroidX=true" >> gradle.properties
-          echo "android.enableJetifier=true" >> gradle.properties
-          echo "kotlin.jvm.target.validation.mode=warning" >> gradle.properties
 
-      - name: Build APK
+          if ! grep -q "^android.useAndroidX=" gradle.properties; then
+            echo "android.useAndroidX=true" >> gradle.properties
+          fi
+
+          if ! grep -q "^android.enableJetifier=" gradle.properties; then
+            echo "android.enableJetifier=true" >> gradle.properties
+          fi
+
+          if ! grep -q "^kotlin.jvm.target.validation.mode=" gradle.properties; then
+            echo "kotlin.jvm.target.validation.mode=warning" >> gradle.properties
+          fi
+
+      - name: Check Android project
         working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          echo "Project directory:"
+          pwd
+
+          echo
+          echo "Project files:"
+          ls -la
+
+          echo
+          echo "Gradle files:"
+          find . -maxdepth 3 \
+            \( -name "settings.gradle*" \
+            -o -name "build.gradle*" \
+            -o -name "gradlew" \) \
+            -print
+
+      - name: Build Debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
         run: |
           gradle :app:assembleDebug --stacktrace
+
+      - name: Verify APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK was not generated."
+            echo "Build output:"
+            find app/build/outputs -type f 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "APK successfully generated:"
+          ls -lh "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -71,4 +142,3 @@ jobs:
           name: ShortsArchiver-debug-apk
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          
