@@ -71,3 +71,4 @@ jobs:
           name: ShortsArchiver-debug-apk
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          
