@@ -124,9 +124,9 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
         run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK=$(find app/build/outputs/apk/debug -maxdepth 1 -name "*.apk" | head -n 1)
 
-          if [ ! -f "$APK" ]; then
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated."
             echo "Build output:"
             find app/build/outputs -type f 2>/dev/null || true
@@ -135,10 +135,11 @@ jobs:
 
           echo "APK successfully generated:"
           ls -lh "$APK"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ShortsArchiver-debug-apk
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          name: lime-debug-apk
+          path: ${{ env.PROJECT_DIR }}/${{ env.APK_PATH }}
           if-no-files-found: error
